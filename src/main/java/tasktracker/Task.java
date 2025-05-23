@@ -3,10 +3,10 @@ package tasktracker;
 import java.time.Instant;
 
 public class Task {
-    private Long id;
+    private final Long id;
     private String description;
     private TaskStatus status;
-    private Instant createdAt;
+    private final Instant createdAt;
     private Instant updatedAt;
 
     public Task (Long id, String description) {
@@ -17,17 +17,16 @@ public class Task {
         this.updatedAt = Instant.now();
     }
 
-
     public Long getId() {
         return id;
     }
 
-    public String getDescription() {
-        return description;
-    }
-
     public TaskStatus getStatus() {
         return status;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public Instant getCreatedAt() {
@@ -53,5 +52,16 @@ public class Task {
 
     private void setUpdatedAt() {
         this.updatedAt = Instant.now();
+    }
+
+    @Override
+    public String toString() {
+        return "Task { " +
+                "id: " + id +
+                ", description: '" + description + '\'' +
+                ", status: " + status +
+                ", createdAt:" + createdAt +
+                ", updatedAt: " + updatedAt +
+                " }";
     }
 }

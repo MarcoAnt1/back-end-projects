@@ -16,17 +16,24 @@ public class Tasks {
         tasks.add(newTask);
     }
 
-    public void updateDescription(String value, String description) {
+    public void updateDescription(Long value, String description) {
+        var updated = false;
         for (var task: tasks) {
-            if (task.getId().toString().equals(value)) {
+            if (task.getId().equals(value)) {
                 task.setDescription(description);
+                updated = true;
             }
+        }
+
+        if (!updated) {
+            System.out.println("Id not found");
         }
     }
 
-    public void updateStatus(String value, boolean done) {
+    public void updateStatus(Long value, boolean done) {
+        var updated = false;
         for (var task: tasks) {
-            if (task.getId().toString().equals(value)) {
+            if (task.getId().equals(value)) {
                 if (done) {
                     task.markAsDone();
                 } else {
@@ -34,10 +41,22 @@ public class Tasks {
                 }
             }
         }
+
+        if (!updated) {
+            System.out.println("Id not found");
+        }
     }
 
-
-    public void delete(String id) {
-        tasks.removeIf(t -> t.getId().toString().equals(id));
+    public void delete(Long id) {
+        tasks.removeIf(t -> t.getId().equals(id));
     }
+
+    public void listAllTasks() {
+        tasks.forEach(System.out::println);
+    }
+
+    public void listTasksByStatus(TaskStatus status) {
+        tasks.stream().filter(task -> task.getStatus().equals(status)).forEach(System.out::println);
+    }
+
 }

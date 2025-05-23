@@ -17,43 +17,61 @@ public class TaskTracker {
     public TaskTracker() {
         tasks = new Tasks();
         objectWriter = new ObjectMapper();
-        objectWriter.registerModule(new JavaTimeModule());
-        objectWriter.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-        objectWriter.enable(SerializationFeature.INDENT_OUTPUT);
+        configObjectWriter();
     }
-
 
     public void track() throws JsonProcessingException {
         System.out.println("Start Task Tracker");
 
         var scanner = new Scanner(System.in);
-        var input = "";
-
+        String input = "";
 
         while (!Objects.equals(input.toLowerCase(), "exit")) {
             var shouldSaveJson = true;
+            var description = "";
+            var command = "";
+            var value = "";
+
             input = scanner.nextLine();
 
-            var command = input.split(" ")[0];
-            var value = input.split(" ")[1];
+            if (input.contains("\"")) {
+                var indexOfDescription = input.indexOf("\"");
+                description = input.substring(indexOfDescription + 1, input.length() - 1);
+                input = input.substring(0, indexOfDescription - 1);
+            }
+
+            var commands = input.split(" ");
+            if (commands.length > 1) {
+                value = commands[1];
+            }
+
+            command = commands[0];
 
             switch (command.toUpperCase()) {
                 case "ADD":
-                    tasks.add(value);
+                    tasks.add(description);
                     break;
                 case "UPDATE":
-                    var newDescription = input.split(" ")[2];
-                    tasks.updateDescription(value, newDescription);
+                    tasks.updateDescription(Long.parseLong(value), description);
                     break;
                 case "DELETE":
-                    tasks.delete(value);
+                    tasks.delete(Long.parseLong(value));
                 case "MARK-IN-PROGRESS":
-                    tasks.updateStatus(value, false);
+                    tasks.updateStatus(Long.parseLong(value), false);
                     break;
                 case "MARK-DONE":
-                    tasks.updateStatus(value, true);
+                    tasks.updateStatus(Long.parseLong(value), true);
+                    break;
+                case "LIST":
+                    if (value.isEmpty()) {
+                        tasks.listAllTasks();
+                    } else {
+                        tasks.listTasksByStatus(TaskStatus.valueOf(value.toUpperCase()));
+                    }
+                    shouldSaveJson = false;
                     break;
                 default:
+                    System.out.println("Command does not exist");
                     shouldSaveJson = false;
                     break;
             }
@@ -64,16 +82,20 @@ public class TaskTracker {
         }
     }
 
-    private void saveJson() throws JsonProcessingException {
-        String json = objectWriter.writeValueAsString(tasks);
-
+    private void saveJson() {
         try (FileWriter file = new FileWriter("tasks.json")) {
+            String json = objectWriter.writeValueAsString(tasks);
             file.write(json);
             file.flush();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.out.println(e.getMessage());
+            System.out.println("Error when try to write file. Try again later.");
         }
+    }
 
-        System.out.println(json);
+    private void configObjectWriter() {
+        objectWriter.registerModule(new JavaTimeModule());
+        objectWriter.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+        objectWriter.enable(SerializationFeature.INDENT_OUTPUT);
     }
 }
