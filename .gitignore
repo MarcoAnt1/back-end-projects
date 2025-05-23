@@ -27,3 +27,38 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+# Build artifacts
+/target/
+/build/
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+
+# IDE-specific files
+.idea/
+*.iml
+.settings/
+
+# Gradle specific
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Maven specific
+.m2/repository/ # Local Maven repository cache
+.mvn/wrapper/maven-wrapper.jar # Maven wrapper jar
+
+# Log files
+*.log
+logs/
+
+# Environment variables / sensitive files
+.env
+.env.local
+*.properties.local # Example for local override properties
+*.yml.local # Example for local override YAML
+
+# OS generated files
+Thumbs.db
