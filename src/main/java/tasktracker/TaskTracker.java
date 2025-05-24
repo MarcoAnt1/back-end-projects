@@ -11,6 +11,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Scanner;
@@ -55,34 +56,51 @@ public class TaskTracker {
 
                     switch (command.toUpperCase()) {
                         case "ADD":
-                            tasks.add(description.orElseThrow(() -> new InvalidCommandException("Description is required for ADD command.")));
+                            var newTask = tasks.add(description.orElseThrow(() -> new InvalidCommandException("Description is required for ADD command.")));
+                            System.out.println("Task added with ID: " + newTask.getId());
                             break;
                         case "UPDATE":
                             tasks.updateDescription(
                                     id.orElseThrow(() -> new InvalidCommandException("ID is required for UPDATE command.")),
                                     description.orElseThrow(() -> new InvalidCommandException("Description is required for UPDATE command."))
                             );
+                            System.out.println("Task ID " + id.get() + " description updated.");
                             break;
                         case "DELETE":
-                            tasks.delete(id.orElseThrow(() -> new InvalidCommandException("ID is required for DELETE command.")));
+                            boolean deleted = tasks.delete(id.orElseThrow(() -> new InvalidCommandException("ID is required for DELETE command.")));
+                            if (deleted) {
+                                System.out.println("Task ID " + id.get() + " deleted.");
+                            } else {
+                                System.out.println("Failed to delete task ID " + id.get() + ".");
+                            }
                             break;
                         case "MARK-IN-PROGRESS":
                             tasks.updateStatus(id.orElseThrow(() -> new InvalidCommandException("ID is required for MARK-IN-PROGRESS command.")), false);
+                            System.out.println("Task ID " + id.get() + " marked in progress.");
                             break;
                         case "MARK-DONE":
-                            tasks.updateStatus(id.orElseThrow(() -> new InvalidCommandException("ID is required for MARK-IN-PROGRESS command.")), true);
+                            tasks.updateStatus(id.orElseThrow(() -> new InvalidCommandException("ID is required for DONE command.")), true);
+                            System.out.println("Task ID " + id.get() + " marked done.");
                             break;
                         case "LIST":
                             shouldSaveJson = false;
+                            List<Task> tasksToDisplay;
                             if (description.isEmpty() || description.get().equalsIgnoreCase("ALL")) {
-                                tasks.listAllTasks();
+                                tasksToDisplay = tasks.getAll();
                             } else {
                                 try {
                                     TaskStatus status = TaskStatus.valueOf(description.get().toUpperCase());
-                                    tasks.listTasksByStatus(status);
+                                    tasksToDisplay = tasks.getTasksByStatus(status);
                                 } catch (IllegalArgumentException e) {
                                     System.err.println("Invalid status for LIST command. Use ALL, DONE, or IN_PROGRESS.");
+                                    tasksToDisplay = List.of();
                                 }
+                            }
+
+                            if (tasksToDisplay.isEmpty()) {
+                                System.out.println("No tasks to show for this filter.");
+                            } else {
+                                tasksToDisplay.forEach(System.out::println);
                             }
                             break;
                         default:
@@ -115,18 +133,18 @@ public class TaskTracker {
     private void loadTasksFromFile() {
         var filePath = Paths.get(TASKS_FILE_NAME);
         if (!Files.exists(filePath)) {
-            tasks.setUniqueId();
+            tasks.synchronizeNextUniqueId();
             return;
         }
 
         try {
             var jsonFile = filePath.toFile();
             tasks = objectMapper.readValue(jsonFile, Tasks.class);
-            tasks.setUniqueId();
+            tasks.synchronizeNextUniqueId();
         } catch (IOException  e) {
             System.err.println("Error loading tasks from file: " + e.getMessage());
             this.tasks = new Tasks();
-            tasks.setUniqueId();
+            tasks.synchronizeNextUniqueId();
         }
     }
 

@@ -1,75 +1,82 @@
 package tasktracker;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class Tasks {
     public final List<Task> tasks;
-    private Long uniqueId;
+    private AtomicLong nextUniqueId;
 
     public Tasks() {
         tasks = new ArrayList<>();
+        nextUniqueId = new AtomicLong(1L);
     }
 
-    public void setUniqueId() {
-        if (tasks.isEmpty()) {
-            uniqueId = 1L;
-        } else {
-            uniqueId = tasks.get(tasks.size() - 1).getId() + 1;
-        }
+    public void synchronizeNextUniqueId() {
+        Optional<Long> maxId = tasks.stream().map(Task::getId).max(Long::compareTo);
+        nextUniqueId.set(maxId.map(id -> id + 1).orElse(1L));
     }
 
-    public void add(String description) {
-        var newTask = new Task(uniqueId++, description);
+    public Task add(String description) {
+        var newTask = new Task(nextUniqueId.getAndIncrement(), description);
         tasks.add(newTask);
+        return newTask;
     }
 
-    public void updateDescription(Long value, String description) {
-        var updated = false;
-        for (var task: tasks) {
-            if (task.getId().equals(value)) {
-                task.setDescription(description);
-                updated = true;
+    public void updateDescription(Long id, String description) {
+        Optional<Task> task = findTaskById(id);
+
+        if (task.isPresent()) {
+            task.get().setDescription(description);
+        } else {
+            throw new TaskNotFoundException(id);
+        }
+    }
+
+    public void updateStatus(Long id, boolean done) {
+        Optional<Task> task = findTaskById(id);
+
+        if (task.isPresent()) {
+            if (done) {
+                task.get().markAsDone();
+            } else {
+                task.get().markAsProgress();
             }
-        }
-
-        if (!updated) {
-            System.out.println("Id not found");
+        } else {
+            throw new TaskNotFoundException(id);
         }
     }
 
-    public void updateStatus(Long value, boolean done) {
-        var updated = false;
-        for (var task: tasks) {
-            if (task.getId().equals(value)) {
-                if (done) {
-                    task.markAsDone();
-                } else {
-                    task.markAsProgress();
-                }
-                updated = true;
-            }
+    public boolean delete(Long id) {
+        boolean removed = tasks.removeIf(t -> t.getId().equals(id));
+        if (!removed) {
+            System.out.println("Task with ID " + id + " not found for deletion.");
         }
-
-        if (!updated) {
-            System.out.println("Id not found");
-        }
+        return removed;
     }
 
-    public void delete(Long id) {
-        tasks.removeIf(t -> t.getId().equals(id));
+    public List<Task> getAll() {
+        return Collections.unmodifiableList(tasks);
     }
 
-    public void listAllTasks() {
-        if (tasks.isEmpty()) {
-            System.out.println("No task to show.");
-        }
-
-        tasks.forEach(System.out::println);
+    public List<Task> getTasksByStatus(TaskStatus status) {
+        return tasks.stream().filter(task -> task.getStatus().equals(status)).collect(Collectors.toList());
     }
 
-    public void listTasksByStatus(TaskStatus status) {
-        tasks.stream().filter(task -> task.getStatus().equals(status)).forEach(System.out::println);
+    public List<Task> getTasks() {
+        return tasks;
     }
 
+    public void setNextUniqueId(Long id) {
+        this.nextUniqueId = new AtomicLong(id);
+    }
+
+    public long getNextUniqueId() {
+        return nextUniqueId.get();
+    }
+
+    private Optional<Task> findTaskById(Long id) {
+        return tasks.stream().filter(task -> task.getId().equals(id)).findFirst();
+    }
 }

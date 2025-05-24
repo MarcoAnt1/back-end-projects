@@ -1,16 +1,23 @@
 package tasktracker;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 public class Task {
-    private Long id;
+    private final Long id;
     private String description;
     private TaskStatus status;
-    private Instant createdAt;
+    private final Instant createdAt;
     private Instant updatedAt;
 
-    public Task() {}
+    public Task() {
+        this.id = null;
+        this.description = null;
+        this.status = null;
+        this.createdAt = null;
+        this.updatedAt = null;
+    }
 
     public Task (Long id, String description) {
         this.id = id;
@@ -41,32 +48,43 @@ public class Task {
     }
 
     public void setDescription(String description) {
-        this.description = description;
-        setUpdatedAt();
+        if (description != null && !description.trim().isEmpty()) { // Add basic validation
+            this.description = description;
+            updateTimestamp();
+        } else {
+            System.err.println("Description cannot be empty for task " + this.id); // Or throw an IllegalArgumentException
+        }
     }
 
     public void markAsProgress() {
-        this.status = TaskStatus.IN_PROGRESS;
-        setUpdatedAt();
+        if (this.status != TaskStatus.IN_PROGRESS) {
+            this.status = TaskStatus.IN_PROGRESS;
+            updateTimestamp();
+        }
     }
 
     public void markAsDone() {
-        this.status = TaskStatus.DONE;
-        setUpdatedAt();
-    }
-
-    private void setUpdatedAt() {
-        this.updatedAt = Instant.now();
+        if (this.status != TaskStatus.DONE) {
+            this.status = TaskStatus.DONE;
+            updateTimestamp();
+        }
     }
 
     @Override
     public String toString() {
+        var formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                .withZone(ZoneId.systemDefault()); // Use system's default time zone
+
         return "Task { " +
                 "id: " + id +
                 ", description: '" + description + '\'' +
                 ", status: " + status +
-                ", createdAt:" + createdAt +
-                ", updatedAt: " + updatedAt +
+                ", createdAt: " + formatter.format(createdAt) +
+                ", updatedAt: " + formatter.format(updatedAt) +
                 " }";
+    }
+
+    private void updateTimestamp() {
+        this.updatedAt = Instant.now();
     }
 }
