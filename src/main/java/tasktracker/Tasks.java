@@ -22,7 +22,6 @@ public class Tasks {
     public void add(String description) {
         var newTask = new Task(uniqueId++, description);
         tasks.add(newTask);
-        System.out.println("Task added successfully (ID: " + newTask.getId() + ")");
     }
 
     public void updateDescription(Long value, String description) {

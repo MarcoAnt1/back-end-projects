@@ -7,96 +7,126 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.vavr.Tuple;
 import io.vavr.Tuple3;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Scanner;
 
 public class TaskTracker {
     private Tasks tasks;
-    private final ObjectMapper objectWriter;
+    private final ObjectMapper objectMapper;
+    private final CommandParser commandParser;
+    private static final String TASKS_FILE_NAME = "tasks.json";
 
     public TaskTracker() {
         tasks = new Tasks();
-        objectWriter = new ObjectMapper();
+        objectMapper = new ObjectMapper();
+        commandParser = new CommandParser();
         configObjectWriter();
         loadTasksFromFile();
     }
 
     public void track() throws JsonProcessingException {
-        System.out.println("Start Task Tracker");
+        System.out.println("Start Task Tracker. Type 'exit' to quit.");
+        System.out.println("Commands: ADD \"desc\", UPDATE <id> \"desc\", DELETE <id>, MARK-IN-PROGRESS <id>, MARK-DONE <id>, LIST [ALL|DONE|IN_PROGRESS]");
 
-        var scanner = new Scanner(System.in);
-        String input = "";
+        try (var scanner = new Scanner(System.in)) {
+            String input;
 
-        while (!Objects.equals(input.toLowerCase(), "exit")) {
-            var shouldSaveJson = true;
+            while (true) {
+                System.out.print(">");
+                input = scanner.nextLine();
 
-            input = scanner.nextLine();
-            var userInputs = getUserInputs(input);
+                if (Objects.equals(input.toLowerCase(), "exit")) {
+                    System.out.println("Exiting Task Tracker. Goodbye!");
+                    break;
+                }
 
-            var command = userInputs._1;
-            var value = userInputs._2;
-            var description = userInputs._3;
+                var shouldSaveJson = true;
 
-            switch (command.toUpperCase()) {
-                case "ADD":
-                    tasks.add(description);
-                    break;
-                case "UPDATE":
-                    tasks.updateDescription(Long.parseLong(value), description);
-                    break;
-                case "DELETE":
-                    tasks.delete(Long.parseLong(value));
-                    break;
-                case "MARK-IN-PROGRESS":
-                    tasks.updateStatus(Long.parseLong(value), false);
-                    break;
-                case "MARK-DONE":
-                    tasks.updateStatus(Long.parseLong(value), true);
-                    break;
-                case "LIST":
-                    if (value.isEmpty()) {
-                        tasks.listAllTasks();
-                    } else {
-                        tasks.listTasksByStatus(TaskStatus.valueOf(value.toUpperCase()));
+                try {
+                    var parsedCommand = commandParser.parse(input);
+                    String command = parsedCommand.command();
+                    Optional<Long> id = parsedCommand.id();
+                    Optional<String> description = parsedCommand.description();
+
+                    switch (command.toUpperCase()) {
+                        case "ADD":
+                            tasks.add(description.orElseThrow(() -> new InvalidCommandException("Description is required for ADD command.")));
+                            break;
+                        case "UPDATE":
+                            tasks.updateDescription(
+                                    id.orElseThrow(() -> new InvalidCommandException("ID is required for UPDATE command.")),
+                                    description.orElseThrow(() -> new InvalidCommandException("Description is required for UPDATE command."))
+                            );
+                            break;
+                        case "DELETE":
+                            tasks.delete(id.orElseThrow(() -> new InvalidCommandException("ID is required for DELETE command.")));
+                            break;
+                        case "MARK-IN-PROGRESS":
+                            tasks.updateStatus(id.orElseThrow(() -> new InvalidCommandException("ID is required for MARK-IN-PROGRESS command.")), false);
+                            break;
+                        case "MARK-DONE":
+                            tasks.updateStatus(id.orElseThrow(() -> new InvalidCommandException("ID is required for MARK-IN-PROGRESS command.")), true);
+                            break;
+                        case "LIST":
+                            shouldSaveJson = false;
+                            if (description.isEmpty() || description.get().equalsIgnoreCase("ALL")) {
+                                tasks.listAllTasks();
+                            } else {
+                                try {
+                                    TaskStatus status = TaskStatus.valueOf(description.get().toUpperCase());
+                                    tasks.listTasksByStatus(status);
+                                } catch (IllegalArgumentException e) {
+                                    System.err.println("Invalid status for LIST command. Use ALL, DONE, or IN_PROGRESS.");
+                                }
+                            }
+                            break;
+                        default:
+                            System.err.println("Unknown command: " + command);
+                            shouldSaveJson = false;
+                            break;
                     }
-                    shouldSaveJson = false;
-                    break;
-                default:
-                    System.out.println("Command does not exist.");
-                    shouldSaveJson = false;
-                    break;
-            }
 
-            if (shouldSaveJson) {
-                saveJson();
+                } catch (InvalidCommandException | TaskNotFoundException e) {
+                    System.err.println("Error: " + e.getMessage());
+                    shouldSaveJson = false;
+                } catch (Exception e) {
+                    System.err.println("An unexpected error occurred: " + e.getMessage());
+                    shouldSaveJson = false;
+                }
+
+                if (shouldSaveJson) {
+                    saveJson();
+                }
             }
         }
     }
 
     private void configObjectWriter() {
-        objectWriter.registerModule(new JavaTimeModule());
-        objectWriter.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-        objectWriter.enable(SerializationFeature.INDENT_OUTPUT);
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
     }
 
     private void loadTasksFromFile() {
-        try {
-            var filePath = Paths.get("tasks.json");
-            if (!Files.exists(filePath)) {
-                tasks.setUniqueId();
-                return;
-            }
-
-            var jsonFile = new File("tasks.json");
-            tasks = objectWriter.readValue(jsonFile, Tasks.class);
+        var filePath = Paths.get(TASKS_FILE_NAME);
+        if (!Files.exists(filePath)) {
             tasks.setUniqueId();
-        } catch (Exception e) {
-            System.out.println("Error to load the tasks from file.");
+            return;
+        }
+
+        try {
+            var jsonFile = filePath.toFile();
+            tasks = objectMapper.readValue(jsonFile, Tasks.class);
+            tasks.setUniqueId();
+        } catch (IOException  e) {
+            System.err.println("Error loading tasks from file: " + e.getMessage());
+            this.tasks = new Tasks();
+            tasks.setUniqueId();
         }
     }
 
@@ -120,12 +150,14 @@ public class TaskTracker {
     }
 
     private void saveJson() {
-        try (FileWriter file = new FileWriter("tasks.json")) {
-            String json = objectWriter.writeValueAsString(tasks);
-            file.write(json);
-            file.flush();
+        try (var fileWriter = new FileWriter(TASKS_FILE_NAME)) {
+            String json = objectMapper.writeValueAsString(tasks);
+            fileWriter.write(json);
+            fileWriter.flush();
+        } catch (JsonProcessingException e) {
+            System.err.println("Error converting tasks to JSON for saving: " + e.getMessage());
         } catch (IOException e) {
-            System.out.println("Error to save file.");
+            System.err.println("Error writing tasks to file " + TASKS_FILE_NAME + ": " + e.getMessage());
         }
     }
 }
