@@ -50,61 +50,28 @@ public class TaskTracker {
 
                 try {
                     var parsedCommand = commandParser.parse(input);
-                    String command = parsedCommand.command();
-                    Optional<Long> id = parsedCommand.id();
-                    Optional<String> description = parsedCommand.description();
 
-                    switch (command.toUpperCase()) {
+                    switch (parsedCommand.command()) {
                         case "ADD":
-                            var newTask = tasks.add(description.orElseThrow(() -> new InvalidCommandException("Description is required for ADD command.")));
-                            System.out.println("Task added with ID: " + newTask.getId());
+                            handleAddCommand(parsedCommand);
                             break;
                         case "UPDATE":
-                            tasks.updateDescription(
-                                    id.orElseThrow(() -> new InvalidCommandException("ID is required for UPDATE command.")),
-                                    description.orElseThrow(() -> new InvalidCommandException("Description is required for UPDATE command."))
-                            );
-                            System.out.println("Task ID " + id.get() + " description updated.");
+                            handleUpdateCommand(parsedCommand);
                             break;
                         case "DELETE":
-                            boolean deleted = tasks.delete(id.orElseThrow(() -> new InvalidCommandException("ID is required for DELETE command.")));
-                            if (deleted) {
-                                System.out.println("Task ID " + id.get() + " deleted.");
-                            } else {
-                                System.out.println("Failed to delete task ID " + id.get() + ".");
-                            }
+                            handleDeleteCommand(parsedCommand);
                             break;
                         case "MARK-IN-PROGRESS":
-                            tasks.updateStatus(id.orElseThrow(() -> new InvalidCommandException("ID is required for MARK-IN-PROGRESS command.")), false);
-                            System.out.println("Task ID " + id.get() + " marked in progress.");
+                            handleMarkInProgressCommand(parsedCommand);
                             break;
                         case "MARK-DONE":
-                            tasks.updateStatus(id.orElseThrow(() -> new InvalidCommandException("ID is required for DONE command.")), true);
-                            System.out.println("Task ID " + id.get() + " marked done.");
+                            handleMarkDoneCommand(parsedCommand);
                             break;
                         case "LIST":
-                            shouldSaveJson = false;
-                            List<Task> tasksToDisplay;
-                            if (description.isEmpty() || description.get().equalsIgnoreCase("ALL")) {
-                                tasksToDisplay = tasks.getAll();
-                            } else {
-                                try {
-                                    TaskStatus status = TaskStatus.valueOf(description.get().toUpperCase());
-                                    tasksToDisplay = tasks.getTasksByStatus(status);
-                                } catch (IllegalArgumentException e) {
-                                    System.err.println("Invalid status for LIST command. Use ALL, DONE, or IN_PROGRESS.");
-                                    tasksToDisplay = List.of();
-                                }
-                            }
-
-                            if (tasksToDisplay.isEmpty()) {
-                                System.out.println("No tasks to show for this filter.");
-                            } else {
-                                tasksToDisplay.forEach(System.out::println);
-                            }
+                            handleListCommand(parsedCommand);
                             break;
                         default:
-                            System.err.println("Unknown command: " + command);
+                            System.err.println("Unknown command: " + parsedCommand.command());
                             shouldSaveJson = false;
                             break;
                     }
@@ -148,23 +115,64 @@ public class TaskTracker {
         }
     }
 
-    private Tuple3<String, String, String> getUserInputs(String input) {
-        String description = "";
-        String value = "";
+    private void handleAddCommand(ParsedCommand command) throws InvalidCommandException {
+        var newTask = tasks.add(command.description().orElseThrow(() -> new InvalidCommandException("Description is required for ADD command.")));
+        System.out.println("Task added with ID: " + newTask.getId());
+    }
 
-        if (input.contains("\"")) {
-            var indexOfDescription = input.indexOf("\"");
-            description = input.substring(indexOfDescription + 1, input.length() - 1);
-            input = input.substring(0, indexOfDescription - 1);
+    private void handleUpdateCommand(ParsedCommand command) throws InvalidCommandException {
+        Long id = command.id().orElseThrow(() -> new InvalidCommandException("ID is required for UPDATE command."));
+        String description = command.description().orElseThrow(() -> new InvalidCommandException("Description is required for UPDATE command."));
+        tasks.updateDescription(id, description);
+        System.out.println("Task ID " + id + " description updated.");
+    }
+
+    private void handleDeleteCommand(ParsedCommand command) throws InvalidCommandException {
+        Long id = command.id().orElseThrow(() -> new InvalidCommandException("ID is required for UPDATE command."));
+        boolean deleted = tasks.delete(id);
+        if (deleted) {
+            System.out.println("Task ID " + id + " deleted.");
+        } else {
+            System.out.println("Task ID " + id + " not found for deletion.");
+        }
+    }
+
+    private void handleMarkInProgressCommand(ParsedCommand command) throws InvalidCommandException, TaskNotFoundException {
+        Long id = command.id()
+                .orElseThrow(() -> new InvalidCommandException("ID is required for MARK-IN-PROGRESS command."));
+        tasks.updateStatus(id, false);
+        System.out.println("Task ID " + id + " marked in progress.");
+    }
+
+    private void handleMarkDoneCommand(ParsedCommand command) throws InvalidCommandException, TaskNotFoundException {
+        Long id = command.id()
+                .orElseThrow(() -> new InvalidCommandException("ID is required for MARK-DONE command."));
+        tasks.updateStatus(id, true);
+        System.out.println("Task ID " + id + " marked done.");
+    }
+
+    private void handleListCommand(ParsedCommand command) {
+        // Description field of ParsedCommand is reused for status string for LIST
+        Optional<String> statusString = command.description();
+
+        List<Task> tasksToDisplay;
+        if (statusString.isEmpty() || statusString.get().equalsIgnoreCase("ALL")) {
+            tasksToDisplay = tasks.getAll();
+        } else {
+            try {
+                TaskStatus status = TaskStatus.valueOf(statusString.get().toUpperCase());
+                tasksToDisplay = tasks.getTasksByStatus(status);
+            } catch (IllegalArgumentException e) {
+                System.err.println("Invalid status for LIST command. Use ALL, DONE, or IN_PROGRESS.");
+                tasksToDisplay = List.of(); // Return empty list on invalid status
+            }
         }
 
-        var commands = input.split(" ");
-        if (commands.length > 1) {
-            value = commands[1];
+        if (tasksToDisplay.isEmpty()) {
+            System.out.println("No tasks to show for this filter.");
+        } else {
+            tasksToDisplay.forEach(System.out::println);
         }
-
-        String command = commands[0];
-        return Tuple.of(command, value, description);
     }
 
     private void saveJson() {
