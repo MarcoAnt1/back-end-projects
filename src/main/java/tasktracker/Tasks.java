@@ -5,15 +5,24 @@ import java.util.List;
 
 public class Tasks {
     public final List<Task> tasks;
-    private Long uniqueIdStarter = 1L;
+    private Long uniqueId;
 
     public Tasks() {
         tasks = new ArrayList<>();
     }
 
+    public void setUniqueId() {
+        if (tasks.isEmpty()) {
+            uniqueId = 1L;
+        } else {
+            uniqueId = tasks.get(tasks.size() - 1).getId() + 1;
+        }
+    }
+
     public void add(String description) {
-        var newTask = new Task(uniqueIdStarter++, description);
+        var newTask = new Task(uniqueId++, description);
         tasks.add(newTask);
+        System.out.println("Task added successfully (ID: " + newTask.getId() + ")");
     }
 
     public void updateDescription(Long value, String description) {
@@ -39,6 +48,7 @@ public class Tasks {
                 } else {
                     task.markAsProgress();
                 }
+                updated = true;
             }
         }
 
@@ -52,6 +62,10 @@ public class Tasks {
     }
 
     public void listAllTasks() {
+        if (tasks.isEmpty()) {
+            System.out.println("No task to show.");
+        }
+
         tasks.forEach(System.out::println);
     }
 

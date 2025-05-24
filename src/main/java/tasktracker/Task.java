@@ -1,13 +1,16 @@
 package tasktracker;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 public class Task {
-    private final Long id;
+    private Long id;
     private String description;
     private TaskStatus status;
-    private final Instant createdAt;
+    private Instant createdAt;
     private Instant updatedAt;
+
+    public Task() {}
 
     public Task (Long id, String description) {
         this.id = id;
@@ -44,10 +47,12 @@ public class Task {
 
     public void markAsProgress() {
         this.status = TaskStatus.IN_PROGRESS;
+        setUpdatedAt();
     }
 
     public void markAsDone() {
         this.status = TaskStatus.DONE;
+        setUpdatedAt();
     }
 
     private void setUpdatedAt() {
