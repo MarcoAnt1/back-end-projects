@@ -1,4 +1,6 @@
-package tasktracker;
+package tasktracker.cli;
+
+import tasktracker.exception.InvalidCommandException;
 
 import java.util.Optional;
 import java.util.regex.Pattern;

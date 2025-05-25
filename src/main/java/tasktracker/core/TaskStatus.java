@@ -1,4 +1,4 @@
-package tasktracker;
+package tasktracker.core;
 
 public enum TaskStatus {
     TODO("todo"),

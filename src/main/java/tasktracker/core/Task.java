@@ -1,4 +1,4 @@
-package tasktracker;
+package tasktracker.core;
 
 import java.time.Instant;
 import java.time.ZoneId;
