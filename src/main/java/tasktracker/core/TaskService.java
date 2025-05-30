@@ -54,9 +54,9 @@ public class TaskService {
     private void loadTasks() {
         try {
             this.tasks = taskRepository.loadTasks();
+            this.tasks.synchronizeNextUniqueId();
         } catch (IOException e) {
             this.tasks = new Tasks();
-        } finally {
             this.tasks.synchronizeNextUniqueId();
         }
     }
