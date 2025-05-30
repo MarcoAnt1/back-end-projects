@@ -1,4 +1,4 @@
-package tasktracker;
+package tasktracker.core;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -48,11 +48,11 @@ public class Task {
     }
 
     public void setDescription(String description) {
-        if (description != null && !description.trim().isEmpty()) { // Add basic validation
+        if (description != null && !description.trim().isEmpty()) {
             this.description = description;
             updateTimestamp();
         } else {
-            System.err.println("Description cannot be empty for task " + this.id); // Or throw an IllegalArgumentException
+            System.err.println("Description cannot be empty for task " + this.id);
         }
     }
 
@@ -73,7 +73,7 @@ public class Task {
     @Override
     public String toString() {
         var formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                .withZone(ZoneId.systemDefault()); // Use system's default time zone
+                .withZone(ZoneId.systemDefault());
 
         return "Task { " +
                 "id: " + id +

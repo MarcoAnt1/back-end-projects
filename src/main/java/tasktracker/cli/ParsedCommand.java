@@ -1,4 +1,4 @@
-package tasktracker;
+package tasktracker.cli;
 
 import java.util.Optional;
 

@@ -1,4 +1,4 @@
-package tasktracker;
+package tasktracker.exception;
 
 public class TaskNotFoundException extends RuntimeException {
     public TaskNotFoundException(long taskId) {

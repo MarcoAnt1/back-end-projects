@@ -1,11 +1,14 @@
-package tasktracker;
+package tasktracker.core;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import tasktracker.exception.TaskNotFoundException;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public class Tasks {
-    public final List<Task> tasks;
+    private List<Task> tasks;
     private AtomicLong nextUniqueId;
 
     public Tasks() {
@@ -48,15 +51,15 @@ public class Tasks {
         }
     }
 
-    public boolean delete(Long id) {
+    public void delete(Long id) {
         boolean removed = tasks.removeIf(t -> t.getId().equals(id));
         if (!removed) {
-            System.out.println("Task with ID " + id + " not found for deletion.");
+            throw new TaskNotFoundException(id);
         }
-        return removed;
     }
 
-    public List<Task> getAll() {
+    @JsonIgnore
+    public List<Task> getAllTasks() {
         return Collections.unmodifiableList(tasks);
     }
 
@@ -68,12 +71,16 @@ public class Tasks {
         return tasks;
     }
 
+    public void setTasks(List<Task> tasks) {
+        this.tasks = tasks;
+    }
+
     public void setNextUniqueId(Long id) {
         this.nextUniqueId = new AtomicLong(id);
     }
 
     public long getNextUniqueId() {
-        return nextUniqueId.get();
+        return this.nextUniqueId.get();
     }
 
     private Optional<Task> findTaskById(Long id) {
