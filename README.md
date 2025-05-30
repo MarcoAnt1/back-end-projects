@@ -2,6 +2,8 @@
 
 A simple command-line tool to manage your daily tasks. Add, list, update, and delete tasks quickly.
 
+**Project Idea Source:** [roadmap.sh Task Tracker Project](https://roadmap.sh/projects/task-tracker)
+
 ## Features
 
 * Add new tasks
